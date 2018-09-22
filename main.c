@@ -8,7 +8,7 @@ void printArg(int arg) {
 
 int main()
 {
-    if(ut_init(10) == 0) {
+    if(ut_init(5) == 0) {
         int thread_0 = ut_spawn_thread(printArg, 0);
         int thread_1 = ut_spawn_thread(printArg, 1);
         int thread_2 = ut_spawn_thread(printArg, 2);

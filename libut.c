@@ -8,8 +8,6 @@
 #include <string.h>
 
 static ut_slot* threads_table;
-static ucontext_t* uc_table;
-
 
 static unsigned int threads_counter = 0;
 static ucontext_t mainThread;
@@ -23,9 +21,7 @@ int ut_init(int tab_size) {
     }
 
     threads_table_size = tab_size;
-
-    threads_table = malloc(tab_size * sizeof(ut_slot));
-    uc_table = malloc(tab_size * sizeof(ucontext_t));
+    threads_table = (ut_slot*)malloc(tab_size * sizeof(ut_slot));
 
     return 0;
 }
@@ -33,6 +29,9 @@ int ut_init(int tab_size) {
 tid_t ut_spawn_thread(void (*func)(int), int arg) {
 
     ut_slot new_thread;
+    ucontext_t* current_ucontext;
+    char new_thread_stack[STACKSIZE];
+    tid_t current_thread_number = threads_counter;
 
     // Checking if there is a room for a new thread to spawn
     if (threads_counter == threads_table_size) {
@@ -40,24 +39,10 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
         return TAB_FULL;
     }
 
-    // Creating a new thread and set up it's values
-    char new_thread_stack[STACKSIZE];
+    threads_table[threads_counter] = (ut_slot)malloc(sizeof(ut_slot_t));
 
-    if (new_thread_stack == NULL) {
-        ("Couldn't allocate memory for thread #%d's stack\n", threads_counter);
-        return SYS_ERR;
-    }
-
-    new_thread = malloc(sizeof(*new_thread));
-    //printf("Size 1: %d\nSize 2: %d\nPointer: %p\n\n", sizeof(*new_thread), sizeof(new_thread), new_thread);
-
-    if (new_thread == NULL) {
-        printf("Couldn't allocate memory for thread #%d's table slot\n", threads_counter);
-        return SYS_ERR;
-    }
-
-
-    ucontext_t* current_ucontext = &(threads_table[threads_counter]->uc);
+    current_ucontext = malloc(sizeof(ucontext_t));
+    printf("current ucontext: %p\n", current_ucontext);
     // Getting a new context for the new thread
     if (getcontext(current_ucontext) == -1) {
         printf("Fatal: Failed to get context for a new thread\n");
@@ -68,48 +53,44 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
     current_ucontext->uc_stack.ss_sp = new_thread_stack;
     current_ucontext->uc_stack.ss_size = sizeof(new_thread_stack);
     current_ucontext->uc_stack.ss_flags = 0;
+    current_ucontext->uc_link = &mainThread;
 
     // Setting up the context
     makecontext(current_ucontext, func, arg);
 
     // Setting up the new ut_slot
-    new_thread->stack = new_thread_stack;
-    new_thread->uc = *current_ucontext;
-    new_thread->vtime = 0;
-    new_thread->func = func;
-    new_thread->arg = arg;
+    threads_table[threads_counter]->stack = new_thread_stack;
+    threads_table[threads_counter]->uc = *current_ucontext;
+    threads_table[threads_counter]->vtime = 0;
+    threads_table[threads_counter]->func = func;
+    threads_table[threads_counter]->arg = arg;
 
-    // Saving the thread's number
-    int current_thread_number = threads_counter;
-
-    threads_table[threads_counter++] = new_thread;
+   // printf("new thread: %p\n", new_thread);
+    printf("Inserted to %p (thread counter: %d)\n", threads_table[threads_counter++], threads_counter);
 
     free(new_thread);
-
     return current_thread_number;
 }
 
 void handler(int signal) {
+    printf("thread: %d - time: %d - cell: %p\n\n", currThreadNum, ut_get_vtime(currThreadNum), &threads_table[currThreadNum]);
 
-    printf("Signal: %d\n", signal);
-    alarm(1);
-    printf("thread: %d - time: %d\n", currThreadNum, ut_get_vtime(currThreadNum));
-
-	printf("Curr: %d\n", currThreadNum);
-	if (signal == SIGVTALRM){
-		// update the vtime statistics
-		printf("cell: %p\n", threads_table[currThreadNum]);
-		threads_table[currThreadNum]->vtime += 100;
-	}
-
-	else {
-        currThreadNum = ((currThreadNum + 1) % threads_counter);
-        printf("SIGALRM\n");
-        ucontext_t* nextThreadToRun = &(uc_table[0]);
-        if (currThreadNum < (threads_counter - 1)) {
-            nextThreadToRun = &(uc_table[currThreadNum + 1]);
-        }
-        swapcontext(&uc_table[currThreadNum], nextThreadToRun);
+	switch (signal){
+        case SIGALRM:
+            alarm(1);
+            currThreadNum = ((currThreadNum + 1) % threads_counter);
+            printf("SIGALRM\n");
+            ucontext_t* nextThreadToRun = &(threads_table[0]->uc);
+            if (currThreadNum < (threads_counter - 1)) {
+                nextThreadToRun = &(threads_table[currThreadNum + 1]->uc);
+            }
+            swapcontext(&threads_table[currThreadNum]->uc, nextThreadToRun);
+        break;
+        case SIGVTALRM:
+            threads_table[currThreadNum]->vtime += 10;
+        break;
+        default:
+        break;
 	}
 }
 
@@ -130,8 +111,8 @@ int ut_start(void) {
     sa.sa_handler = handler;
 
     // Setting up the timer interval struct
-    itv.it_interval.tv_sec = 1;
-    itv.it_interval.tv_usec = 0;
+    itv.it_interval.tv_sec = 0;
+    itv.it_interval.tv_usec = 10000;
     itv.it_value = itv.it_interval;
 
     if (sigaction(SIGALRM, &sa, NULL) < 0)
