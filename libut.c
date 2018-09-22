@@ -73,18 +73,17 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
 }
 
 void handler(int signal) {
-    printf("thread: %d - time: %d - cell: %p\n\n", currThreadNum, ut_get_vtime(currThreadNum), &threads_table[currThreadNum]);
+    printf("thread: %d - time: %d\n\n", currThreadNum, ut_get_vtime(currThreadNum));
 
 	switch (signal){
         case SIGALRM:
             alarm(1);
             currThreadNum = ((currThreadNum + 1) % threads_counter);
             printf("SIGALRM\n");
-            ucontext_t* nextThreadToRun = &(threads_table[0]->uc);
-            if (currThreadNum < (threads_counter - 1)) {
-                nextThreadToRun = &(threads_table[currThreadNum + 1]->uc);
-            }
-            swapcontext(&threads_table[currThreadNum]->uc, nextThreadToRun);
+
+            // Swap context to the follwing thread on the array (circular)
+            ucontext_t* nextThreadToRun = &(threads_table[(currThreadNum + 1) % threads_counter]->uc);
+            swapcontext(&(threads_table[currThreadNum]->uc), nextThreadToRun);
         break;
         case SIGVTALRM:
             threads_table[currThreadNum]->vtime += 10;
