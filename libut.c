@@ -82,6 +82,7 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
     return current_thread_number;
 }
 
+/* This is the signal handler which swaps between the threads and profiles the time of the running threads*/
 void handler(int signal) {
 	switch (signal){
         case SIGALRM:
