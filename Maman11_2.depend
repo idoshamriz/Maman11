@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1537540514 source:/home/ido/Desktop/Projects/Maman11_2/libut.c
+1537627318 source:/home/ido/Desktop/Projects/Maman11_2/libut.c
 	"ut.h"
 	<stdio.h>
 	<stdlib.h>
@@ -7,11 +7,12 @@
 	<ucontext.h>
 	<unistd.h>
 	<sys/time.h>
+	<string.h>
 
 1537281098 /home/ido/Desktop/Projects/Maman11_2/ut.h
 	<ucontext.h>
 
-1537534987 source:/home/ido/Desktop/Projects/Maman11_2/main.c
+1537626337 source:/home/ido/Desktop/Projects/Maman11_2/main.c
 	<stdio.h>
 	<stdlib.h>
 	"ut.h"

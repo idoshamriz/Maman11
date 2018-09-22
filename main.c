@@ -3,7 +3,7 @@
 #include "ut.h"
 
 void printArg(int arg) {
-    printf("In thread number %d\n", arg);
+    while (1);
 }
 
 int main()
