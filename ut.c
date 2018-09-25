@@ -7,6 +7,10 @@
 #include <sys/time.h>
 #include <string.h>
 
+#define QUANTOM 1
+#define INTERVAL_TIMER_MILLISECONDS 100
+#define MILLISECOND_TO_MICRO 1000
+
 // Threads' table
 static ut_slot* threads_table = NULL;
 static unsigned int threads_counter = 0;
@@ -14,7 +18,7 @@ static int threads_table_size = 0;
 
 // variables to control the context switching
 static ucontext_t mainThread;
-static volatile tid_t currThreadNum = NULL;
+static volatile tid_t currThreadNum = 0;
 
 int ut_init(int tab_size) {
 
@@ -38,7 +42,6 @@ int ut_init(int tab_size) {
 }
 
 tid_t ut_spawn_thread(void (*func)(int), int arg) {
-    ucontext_t* curretnUcontext; // ucontext_t pointer that points to the ut_slot's ucontext (Better for readability)
     char * new_thread_stack; // The stack of the new ut_slot
     tid_t current_thread_number = threads_counter; // The thread id of the new ut_slot
 
@@ -77,21 +80,25 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
         return SYS_ERR;
     }
 
+
     // Setting up the new_ucontext's data
     threads_table[threads_counter]->uc.uc_stack.ss_sp = new_thread_stack;
     threads_table[threads_counter]->uc.uc_stack.ss_size = STACKSIZE * sizeof(char);
     threads_table[threads_counter]->uc.uc_stack.ss_flags = 0;
     threads_table[threads_counter]->uc.uc_link = &mainThread;
-    makecontext(&(threads_table[threads_counter]->uc), func, arg);
 
     // Setting up the new ut_slot
     threads_table[threads_counter]->stack = new_thread_stack;
     threads_table[threads_counter]->vtime = 0;
     threads_table[threads_counter]->func = func;
     threads_table[threads_counter]->arg = arg;
+    (void)makecontext(&(threads_table[threads_counter]->uc),
+        (void(*)(void))threads_table[threads_counter]->func,
+        threads_table[threads_counter]->arg);
 
    // printf("new thread: %p\n", new_thread);
-    printf("Info: new ut_slot in %p (tid: %d)\n", threads_table[threads_counter++], threads_counter);
+    printf("Info: new thread table record in (tid: %d)\n", threads_counter);
+    threads_counter++;
 
     // Return the tid
     return current_thread_number;
@@ -101,21 +108,22 @@ tid_t ut_spawn_thread(void (*func)(int), int arg) {
 void handler(int signal) {
 	switch (signal){
         case SIGALRM:
-
             // Restart the alarm signal
-            alarm(1);
+            alarm(QUANTOM);
 
             // Getting the next tid in line
             currThreadNum = ((currThreadNum + 1) % threads_counter);
 
             // Swap context to the follwing thread on the array (circular)
-            ucontext_t* nextThreadToRun = &(threads_table[(currThreadNum + 1) % threads_counter]->uc);
-            swapcontext(&(threads_table[currThreadNum]->uc), nextThreadToRun);
+            if (SYS_ERR == swapcontext(&(threads_table[currThreadNum]->uc), &(threads_table[(currThreadNum + 1) % threads_counter]->uc))) {
+                fprintf(stderr, "Error: swapcontext in signal handler!");
+                exit(1);
+            }
         break;
 
         case SIGVTALRM:
             // Adding to the total time of thread running
-            threads_table[currThreadNum]->vtime += 10;
+            threads_table[currThreadNum]->vtime += INTERVAL_TIMER_MILLISECONDS;
         break;
 
         default:
@@ -136,7 +144,7 @@ int ut_start(void) {
 
     // Setting up the timer interval struct
     itv.it_interval.tv_sec = 0;
-    itv.it_interval.tv_usec = 10000;
+    itv.it_interval.tv_usec = INTERVAL_TIMER_MILLISECONDS * MILLISECOND_TO_MICRO;
     itv.it_value = itv.it_interval;
 
     // Install the signal handler for the signals and intervals
@@ -150,10 +158,10 @@ int ut_start(void) {
 		return SYS_ERR;
 
     // Starting to switch threads
-    alarm(1);
+    alarm(QUANTOM);
     currThreadNum = 0;
-	while (1);
-
+    threads_table[0]->vtime += INTERVAL_TIMER_MILLISECONDS;
+	swapcontext(&mainThread, &(threads_table[0]->uc));
 	// Should never return
     return 0;
 }
