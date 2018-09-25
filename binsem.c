@@ -1,4 +1,10 @@
+#include <sys/types.h>
+#include <stdio.h>
+#include <signal.h>
+#include <unistd.h>
+
 #include "binsem.h"
+#include "ut.h"
 
 #define LOCKED 0
 #define UNLOCKED 1
@@ -8,12 +14,12 @@
 void binsem_init(sem_t *s, int init_val) {
     if (s == NULL) {
         fprintf(stderr, "Error: invalid value for semaphore init");
-        exit(SYS_ERR);
+        return;
     }
 
     // Setting the semaphore's initial value based on the received input
     sem_t sem_init_value = (LOCKED == init_val) ? LOCKED : UNLOCKED;
-    xchg(s, sem_init_value)
+    xchg(s, sem_init_value);
 }
 
 void binsem_up(sem_t *s) {
@@ -22,18 +28,18 @@ void binsem_up(sem_t *s) {
 }
 
 int binsem_down(sem_t *s) {
-    pid_t current_process_id = NULL;
-    sem_t use_semphore = LOCKED;
+    pid_t current_process_id;
+    sem_t use_semaphore = LOCKED;
 
     // "Blocking" the process until the semaphore is released
-    while (LOCKED == use_semphore) {
+    while (LOCKED == use_semaphore) {
 
         // Trying to lock the semaphore to the current thread
-        use_semphore = xchg(s, LOCKED);
+        use_semaphore = xchg(s, LOCKED);
 
         // If another thread already locked the semaphor, "block" the current one (by sending an alarm and
         // run the following thread
-        if (LOCKED == lock_semphore) {
+        if (LOCKED == use_semaphore) {
             current_process_id = getpid();
 
             if (PID_ERROR == kill(current_process_id, SIGALRM)) {

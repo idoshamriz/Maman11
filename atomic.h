@@ -50,7 +50,7 @@ static inline unsigned long __xchg(unsigned long x, void * ptr, int size)
 				:"memory");
 			break;
 		case 4:
-			__asm__ __volatile__("xchgl %0,%1"
+			__asm__ __volatile__("xchg %0,%1"
 				:"=r" (x)
 				:"m" (*__xg(ptr)), "0" (x)
 				:"memory");

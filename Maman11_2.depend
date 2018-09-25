@@ -17,3 +17,26 @@
 	<stdlib.h>
 	"ut.h"
 
+1537784899 source:/home/ido/Desktop/Projects/Maman11_2/binsem.c
+	<sys/types.h>
+	<stdio.h>
+	<signal.h>
+	<unistd.h>
+	"binsem.h"
+	"ut.h"
+
+1537784711 /home/ido/Desktop/Projects/Maman11_2/binsem.h
+	"atomic.h"
+
+1537785041 /home/ido/Desktop/Projects/Maman11_2/atomic.h
+
+1537786721 source:/home/ido/Desktop/Projects/Maman11_2/ut.c
+	"ut.h"
+	<stdio.h>
+	<stdlib.h>
+	<signal.h>
+	<ucontext.h>
+	<unistd.h>
+	<sys/time.h>
+	<string.h>
+

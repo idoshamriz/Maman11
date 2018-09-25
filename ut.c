@@ -92,7 +92,6 @@ void handler(int signal) {
 
             // Getting the next tid in line
             currThreadNum = ((currThreadNum + 1) % threads_counter);
-            printf("SIGALRM\n");
 
             // Swap context to the follwing thread on the array (circular)
             ucontext_t* nextThreadToRun = &(threads_table[(currThreadNum + 1) % threads_counter]->uc);
