@@ -8,13 +8,13 @@
 #include <string.h>
 
 // Threads' table
-static ut_slot* threads_table;
+static ut_slot* threads_table = NULL;
 static unsigned int threads_counter = 0;
 static int threads_table_size = 0;
 
 // variables to control the context switching
 static ucontext_t mainThread;
-static volatile tid_t currThreadNum;
+static volatile tid_t currThreadNum = NULL;
 
 int ut_init(int tab_size) {
 
@@ -26,57 +26,72 @@ int ut_init(int tab_size) {
 
     // Allocating space for the ut_slot array
     threads_table_size = tab_size;
-    threads_table = (ut_slot*)malloc(tab_size * sizeof(ut_slot));
+    threads_table = (ut_slot*)calloc(tab_size, sizeof(ut_slot));
+
+    if (NULL == threads_table) {
+        fprintf(stderr, "Failed to allocate thread's table");
+        perror(NULL);
+        return SYS_ERR;
+    }
 
     return 0;
 }
 
 tid_t ut_spawn_thread(void (*func)(int), int arg) {
+    ucontext_t* curretnUcontext; // ucontext_t pointer that points to the ut_slot's ucontext (Better for readability)
+    char * new_thread_stack; // The stack of the new ut_slot
+    tid_t current_thread_number = threads_counter; // The thread id of the new ut_slot
 
-    // Defining variables
-    ut_slot new_thread;
-    ucontext_t* curretnUcontext;
-    char new_thread_stack[STACKSIZE];
-    tid_t current_thread_number = threads_counter;
+    if (NULL == func) {
+        fprintf(stderr, "Bad input: function parameter for the thread is not valid");
+        return SYS_ERR;
+    }
+
+    // ut_spawn_thread was called before ut_init
+    if (NULL == threads_table) {
+        fprintf(stderr, "Error: Thread's table is not initialized. Make sure you have called \"ut_init\" prior to spawining your threads");
+        return SYS_ERR;
+    }
 
     // Checking if there is a room for a new thread to spawn
-    if (threads_counter == threads_table_size) {
+    if (threads_counter >= threads_table_size) {
         printf("No more room for new threads\n");
         return TAB_FULL;
     }
 
+    // Allocating thread for the new thread
+    new_thread_stack = (char*)calloc(STACKSIZE, sizeof(char));
+
     // Allocating new ut_slot
     threads_table[threads_counter] = (ut_slot)malloc(sizeof(ut_slot_t));
 
-    // Allocating new ucontext
-    curretnUcontext = (ucontext_t*) malloc(sizeof(ucontext_t));
-    printf("current ucontext: %p\n", curretnUcontext);
+    if (NULL == threads_table[threads_counter]) {
+        fprintf(stderr, "Failed to allocate new thread");
+        perror(NULL);
+        return SYS_ERR;
+    }
 
     // Getting a new context for the new thread
-    if (getcontext(curretnUcontext) == -1) {
+    if (getcontext(&(threads_table[threads_counter]->uc)) == -1) {
         printf("Fatal: Failed to get context for a new thread\n");
         return SYS_ERR;
     }
 
     // Setting up the new_ucontext's data
-    curretnUcontext->uc_stack.ss_sp = new_thread_stack;
-    curretnUcontext->uc_stack.ss_size = sizeof(new_thread_stack);
-    curretnUcontext->uc_stack.ss_flags = 0;
-    curretnUcontext->uc_link = &mainThread;
-    makecontext(curretnUcontext, func, arg);
+    threads_table[threads_counter]->uc.uc_stack.ss_sp = new_thread_stack;
+    threads_table[threads_counter]->uc.uc_stack.ss_size = STACKSIZE * sizeof(char);
+    threads_table[threads_counter]->uc.uc_stack.ss_flags = 0;
+    threads_table[threads_counter]->uc.uc_link = &mainThread;
+    makecontext(&(threads_table[threads_counter]->uc), func, arg);
 
     // Setting up the new ut_slot
     threads_table[threads_counter]->stack = new_thread_stack;
-    threads_table[threads_counter]->uc = *curretnUcontext;
     threads_table[threads_counter]->vtime = 0;
     threads_table[threads_counter]->func = func;
     threads_table[threads_counter]->arg = arg;
 
    // printf("new thread: %p\n", new_thread);
     printf("Info: new ut_slot in %p (tid: %d)\n", threads_table[threads_counter++], threads_counter);
-
-    free(new_thread);
-    free(curretnUcontext);
 
     // Return the tid
     return current_thread_number;

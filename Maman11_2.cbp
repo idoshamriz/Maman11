@@ -32,14 +32,14 @@
 			<Add option="-Wall" />
 		</Compiler>
 		<Unit filename="atomic.h" />
+		<Unit filename="binsem.c">
+			<Option compilerVar="CC" />
+		</Unit>
 		<Unit filename="binsem.h" />
-		<Unit filename="libbinsem.c">
-			<Option compilerVar="CC" />
-		</Unit>
-		<Unit filename="libut.c">
-			<Option compilerVar="CC" />
-		</Unit>
 		<Unit filename="main.c">
+			<Option compilerVar="CC" />
+		</Unit>
+		<Unit filename="ut.c">
 			<Option compilerVar="CC" />
 		</Unit>
 		<Unit filename="ut.h" />
