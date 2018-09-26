@@ -51,6 +51,5 @@ int binsem_down(sem_t *s) {
 
     // Exiting the while loop states that the current thread managed to LOCK an UNLOCKED semaphore
     // atomically, which means it is currently running
-
     return 0;
 }
