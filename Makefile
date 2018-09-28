@@ -1,22 +1,24 @@
-all: binsem.a ut.a ph clean
+CC=gcc
+AR_COM=ar rcs
+LIB_FLAGS = -Wall -Werror -c
+LIBS=libbinsem.a libut.a
+PH=ph
+OUTPUT_FLAGS = -Wall -Werror -L./
+CLEAN=clean
 
-FLAGS = -Wall -L./
+all: $(LIBS) $(PH) clean
 
-ut.a:
-	gcc $(FLAGS)  -c ut.c
-	ar rcu libut.a ut.o
-	ranlib libut.a 
+$(PH): $(PH).o $(LIBS)
+	@echo "Creating ${PH}"
+	@$(CC) ${OUTPUT_FLAGS} $^ -o $@
 
-binsem.a:
-	gcc $(FLAGS) -c binsem.c
-	ar rcu libbinsem.a binsem.o
-	ranlib libbinsem.a 
+%.o: %.c
+	@$(CC) $(LIB_FLAGS) $^ -o $@
 
-ph: ph.c 
-	gcc ${FLAGS} ph.c -lbinsem -lut -o ph
+lib%.a: %.o
+	@echo "Creating Library $@"
+	@$(AR_COM) $@ $^
+	@ranlib $@
 
 clean:
-	rm -f *.o 
-	rm -f a.out
-	rm -f *~
-	rm -f *a 
+	rm -f $(LIBS) *.o
